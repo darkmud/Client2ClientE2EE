@@ -1,1 +1,1 @@
-# Client2ClientE2EE
+# Client to Client Messenger with End-to-End Encryption
