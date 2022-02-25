@@ -35,6 +35,24 @@ int gethostname(char *hostname, size_t size);
 
 using namespace std;
 
+/*
+// sockfd_create() => Uses getaddrinfo() and socket() to create a Socket Descriptor
+int sockfd_create(char *address, char *port) {
+    int status;
+    struct addrinfo node_info, *server_info;
+
+    memset(&node_info, 0, sizeof node_info);
+    node_info.ai_family = AF_UNSPEC;
+    node_info.ai_socktype = SOCK_STREAM;
+
+    status = getaddrinfo(address, port, &node_info, &server_info);
+
+    //print_ip(server_info); 
+
+    freeaddrinfo(server_info);
+    return 0;
+}*/
+
 // print_ip() => Prints out IP Address
 void print_ip(const struct addrinfo *server_info) {
     void* addr;
@@ -59,10 +77,7 @@ class Socket
         node_info.ai_family = AF_UNSPEC;
         node_info.ai_socktype = SOCK_STREAM;
 
-        if ((status = getaddrinfo(address, port, &node_info, &server_info)) != 0) {
-            std::cerr << "getaddrinfo() ERROR: " << gai_strerror(status);
-            return 2;
-        }
+        status = getaddrinfo(address, port, &node_info, &server_info);
         
         print_ip(server_info);
 
@@ -74,14 +89,17 @@ class Socket
 // MAIN
 int main(int argc, char *argv[]) {
 
-    Socket sock1;
     int status, sockfd;
 
-	/*if(argc != 2) {
-        std::cout <<"Usage: ./serverstart showip <hostname> <port>";	
-	}*/
+	if(argc != 2) {
+        std::cout <<"Usage: ./serverstart showip <hostname>";	
+	}
 
-    sock1.sockfd_create(argv[1], argv[2]);
+    //sockfd = sockfd_create(argv[1], NULL);
+    //cout << sockfd;
+
+    Socket sock1;
+    sock1.sockfd_create(argv[1], NULL);
 
 
 	return 0;
