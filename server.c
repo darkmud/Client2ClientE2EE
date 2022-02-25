@@ -14,36 +14,28 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-
-// FUNCTION DECLARATIONS
-int getaddrinfo(const char *node,          // e.g "www.example.com" OR IP addr
-		const char *service,               // e.g "http", "ftp", or port num
-		const struct addrinfo *node_info,  // struct addrinfo of relevant info
-		struct addrinfo **res);            // Linked List of Results
-
-int socket(int domain, int type, int protocol);
-int bind(int sockfd, struct sockaddr *my_addr, int addrlen);
-int connect(int sockfd, struct sockaddr *serv_addr, int addrlen);
-int listen(int sockfd, int backlog);
-int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
-int send(int sockfd, const void *msg, int len, int flags);
-int recv(int sockfd, void *buf, int len, int flags);
-int shutdown(int sockfd, int how);
-
-int getpeername(int sockfd, struct sockaddr *addr, int *addrlen);
-int gethostname(char *hostname, size_t size);
+#define BACKLOG 10
 
 using namespace std;
 
 // print_ip() => Prints out IP Address
-void print_ip(const struct addrinfo *server_info) {
+void print_ip(int ip_ver, const struct addrinfo *server_info) {
     void* addr;
-    char ipstr[INET_ADDRSTRLEN];
 
-    struct sockaddr_in *ipv4 = (struct sockaddr_in *)server_info -> ai_addr;
-    addr = &(ipv4 -> sin_addr);
-    inet_ntop(AF_INET, addr, ipstr, sizeof ipstr);
-    cout << "IPV4: " << ipstr << endl;
+    if (ip_ver == 4) {
+        char ipstr[INET_ADDRSTRLEN];
+        struct sockaddr_in *ipv4 = (struct sockaddr_in *)server_info -> ai_addr;
+        addr = &(ipv4 -> sin_addr);
+        inet_ntop(AF_INET, addr, ipstr, sizeof ipstr);
+        cout << "IPV4: " << ipstr << endl;
+    }
+    /*} else if (ip_ver == 6) {
+        char ipstr[INET6_ADDRSTRLEN];
+        struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)server_info -> ai_addr;
+        addr = &(ipv6 -> sin6_addr);
+        inet_ntop(AF_INET6, addr, ipstr, sizeof ipstr);
+        cout << "IPV6: " << ipstr << endl;
+    }*/
 }
 
 class Socket
@@ -51,7 +43,7 @@ class Socket
     public:
     int status, sockfd;
 
-    int sockfd_create(char *address, char *port) {
+    int sockfd_connect(char *address, char *port) {
         int status;
         struct addrinfo node_info, *server_info;
 
@@ -63,8 +55,30 @@ class Socket
             std::cerr << "getaddrinfo() ERROR: " << gai_strerror(status);
             return 2;
         }
+
+        if ( (sockfd = socket(server_info -> ai_family, server_info -> ai_socktype, server_info -> ai_protocol)) == -1) {
+            perror("Socket Error");
+        }
+
+        bind(sockfd, server_info -> ai_addr, server_info -> ai_addrlen); 
         
-        print_ip(server_info);
+        if (connect(sockfd, server_info -> ai_addr, server_info -> ai_addrlen) == -1) {
+            perror("Connection Error");
+        }
+
+        listen(sockfd, BACKLOG);
+
+        int new_fd;
+        struct sockaddr_storage their_addr;
+        socklen_t addr_size = sizeof their_addr;
+        new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size);
+
+        char const *msg = "test";
+        int len, bytes_sent;
+        len = strlen(msg);
+        bytes_sent = send(sockfd, msg, len, 0);
+
+        print_ip(4, server_info);
 
         freeaddrinfo(server_info);
         return 0;
@@ -77,12 +91,11 @@ int main(int argc, char *argv[]) {
     Socket sock1;
     int status, sockfd;
 
-	/*if(argc != 2) {
+	if(argc != 3) {
         std::cout <<"Usage: ./serverstart showip <hostname> <port>";	
-	}*/
+	}
 
-    sock1.sockfd_create(argv[1], argv[2]);
-
+    sock1.sockfd_connect(argv[1], argv[2]);
 
 	return 0;
 }
